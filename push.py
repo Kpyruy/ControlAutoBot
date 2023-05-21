@@ -14,7 +14,13 @@ async def initialize_settings():
     with open('head/values/settings.txt', 'w', encoding='cp1251') as file:
         file.writelines(lines)
 
+async def clear_logs():
+    lines = []
+    with open('head/values/settings.txt', 'w', encoding='utf-8') as file:
+        file.writelines(lines)
+
 loop = asyncio.get_event_loop()
+loop.run_until_complete(clear_logs())
 loop.run_until_complete(initialize_settings())
 
 # Запуск файла la_start.py в отдельном процессе

@@ -34,6 +34,33 @@ async def read_settings():
     sent_messages = lines[3].split("==")[1].strip()
     return formatted_time, stop_count, sent_messages
 
+async def read_logs():
+    with open('head/values/logs.txt', 'r', encoding='utf-8') as file:
+        logs = file.readlines()
+    return logs
+
+async def show_logs(callback_query, state):
+    logs = await read_logs()
+    data = await state.get_data()
+    index = data.get('logs_index', 0)
+    limit = 10
+    message_text = "*Последние активные логи:*\n```"
+    for line in logs[index:index + limit]:
+        timestamp_end_index = line.index("]")
+        timestamp = line[1:timestamp_end_index]
+        log_text = line[timestamp_end_index + 2:]
+        message_text += f"[{timestamp}] {log_text}"
+    message_text += "```"
+    keyboard = types.InlineKeyboardMarkup()
+    prev_button = types.InlineKeyboardButton(text='◀️ Назад', callback_data='prev_logs')
+    next_button = types.InlineKeyboardButton(text='Вперед ▶️', callback_data='next_logs')
+    done_button = types.InlineKeyboardButton(text='Выполнено! ✅', callback_data='done')
+    keyboard.row(prev_button, next_button)
+    keyboard.row(done_button)
+    # Edit the existing message with the new logs
+    await callback_query.bot.edit_message_text(chat_id=callback_query.from_user.id,
+                                               message_id=callback_query.message.message_id,
+                                               text=message_text, parse_mode="Markdown", reply_markup=keyboard)
 
 @dp.message_handler(commands=['start'])
 async def start_command(message: types.Message):
@@ -128,15 +155,50 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
                                         parse_mode="Markdown", reply_markup=keyboard, disable_web_page_preview=True)
 
     elif button_text == 'logs':
-        # Добавьте ваш функционал для загрузки логов
-        await bot.answer_callback_query(callback_query.id, text="Загрузка логов...")
+        await show_logs(callback_query, state)
+
+    elif button_text == 'prev_logs':
+        data = await state.get_data()
+        index = data.get('logs_index', 0)
+        limit = 10
+        has_prev_logs = index > 0
+        if not has_prev_logs:
+            await bot.answer_callback_query(callback_query.id, text="📑 Вы уже в самом начале!")
+        if index >= limit:
+            index -= limit
+        await state.update_data(logs_index=index)  # Update state data instead of bot data
+        await callback_query.answer()
+        # Show loading notification
+        await bot.answer_callback_query(callback_query.id, text="Загрузка логов... ⏱️")
+        # Edit the existing message with the updated logs
+        await show_logs(callback_query, state)
+
+    elif button_text == 'next_logs':
+        data = await state.get_data()
+        logs = await read_logs()
+        index = data.get('logs_index', 0)
+        limit = 10
+        has_next_logs = (index + limit) < len(logs)
+        if not has_next_logs:
+            await bot.answer_callback_query(callback_query.id, text="📑 Следующих логов ещё нет, пожалуйста, подождите.")
+        if index + limit < len(logs):
+            index += limit
+        await state.update_data(logs_index=index)  # Update state data instead of bot data
+        await callback_query.answer()
+        # Show loading notification
+        await bot.answer_callback_query(callback_query.id, text="Загрузка логов... ⏱️")
+        # Edit the existing message with the updated logs
+        await show_logs(callback_query, state)
+
+    elif button_text == 'done':
+        await bot.delete_message(callback_query.from_user.id, callback_query.message.message_id)
+        await bot.answer_callback_query(callback_query.id, text="Задача была выполнена успешно! ✔ ️")
 
     elif button_text == 'back':
         await bot.answer_callback_query(callback_query.id, text="Вы успешно вернулись в меню! 🎊")
         await bot.delete_message(callback_query.from_user.id, callback_query.message.message_id)  # Удаление сообщения
 
         await state.finish()  # Завершение состояния
-
 
 @dp.message_handler(state=UserInput.message)
 async def update_message (message: types.Message, state: FSMContext):

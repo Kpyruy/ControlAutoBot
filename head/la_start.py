@@ -59,7 +59,7 @@ with client:
 
     def write_to_logs(message):
         current_time = datetime.now(pytz.timezone('Europe/Kiev')).strftime('%H:%M:%S')
-        with open('head/values/logs.txt', 'w', encoding='utf-8') as file:
+        with open('head/values/logs.txt', 'a', encoding='utf-8') as file:
             file.write(f"[{current_time}] {message}\n")
 
     while True:
