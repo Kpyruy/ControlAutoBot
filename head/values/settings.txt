@@ -1,0 +1,5 @@
+Pause==True
+formatted_time==0 часов, 0 минут, 3 секунды
+stop_count==0
+sent_messages==0
+flood_wait==213
