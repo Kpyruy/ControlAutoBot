@@ -1,7 +1,6 @@
-logging==0.4.9.6
 telethon==1.28.5
 aiogram==2.25.1
 asyncio==3.4.3
 aiohttp==3.8.4
 emoji==2.2.0
-aiofiles==23.1.0
+pytz~=2023.3

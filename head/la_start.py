@@ -1,3 +1,5 @@
+import pytz
+from datetime import datetime
 import logging
 import asyncio
 from telethon.errors.rpcerrorlist import FloodWaitError
@@ -55,6 +57,12 @@ with client:
             file.writelines(lines)
 
 
+    async def write_to_logs(message):
+        current_time = datetime.now(pytz.timezone('Europe/Kiev')).strftime('%H:%M:%S')
+        with open('head/values/logs.txt', 'a', encoding='utf-8') as file:
+            file.write(f"[{current_time}] {message}\n")
+
+
     while True:
         try:
             loop = asyncio.get_event_loop()
@@ -62,28 +70,30 @@ with client:
             if check_status():
                 if not resumed:
                     if sent_messages > 0:
-                        print("Отправка сообщений возобновлена.")
+                        await write_to_logs("Отправка сообщений возобновлена.")
                     resumed = True
                 message, username = loop.run_until_complete(read_values_from_files())
                 loop.run_until_complete(send_message(message, username))
                 sent_messages += 1
             else:
                 if resumed:
-                    print("Отправка сообщений приостановлена.")
+                    await write_to_logs("Отправка сообщений приостановлена.")
                     resumed = False
         except KeyboardInterrupt:
-            print(f"Программа была остановлена пользователем. Отправлено сообщений: {sent_messages}")
+            await write_to_logs(f"Программа была остановлена пользователем. Отправлено сообщений: {sent_messages}")
             break
         except Exception as ex:
-            print(f"Error: {ex}")
+            await write_to_logs(f"Error: {ex}")
 
         elapsed_time = time.time() - start_time
         if elapsed_time >= 750:
             stop_count += 1
-            print(f"Прошло 12,5 минут. Бот приостанавливает отправку сообщений на 2,5 минуты.")
-            print(f"Остановка #{stop_count} в {time.strftime('%H:%M:%S', time.localtime())}")
+            await write_to_logs("Прошло 12,5 минут. Бот приостанавливает отправку сообщений на 2,5 минуты.")
+            current_time = datetime.now(pytz.timezone('Europe/Moscow')).strftime('%H:%M:%S')
+            await write_to_logs(f"Остановка #{stop_count} в {current_time}")
             time.sleep(150)
-            print(f"Возобновление работы бота в {time.strftime('%H:%M:%S', time.localtime())}")
+            current_time = datetime.now(pytz.timezone('Europe/Moscow')).strftime('%H:%M:%S')
+            await write_to_logs(f"Возобновление работы бота в {current_time}")
             start_time = time.time()
             resumed = False
 
@@ -120,4 +130,4 @@ with client:
 
         formatted_time = f"{hours_str}, {minutes_str}, {seconds_str}"
 
-        loop.run_until_complete(update_settings(formatted_time, stop_count, sent_messages))
+        await update_settings(formatted_time, stop_count, sent_messages)
