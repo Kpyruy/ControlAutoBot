@@ -57,7 +57,11 @@ async def show_logs(callback_query, state):
     done_button = types.InlineKeyboardButton(text='Выполнено! ✅', callback_data='done')
     keyboard.row(prev_button, next_button)
     keyboard.row(done_button)
-    # Edit the existing message with the new logs
+    # Проверка, изменилось ли содержимое сообщения или разметка ответа
+    if (callback_query.message.text == message_text and
+            callback_query.message.reply_markup == keyboard):
+        return
+    # Редакция существующего сообщения с новыми логами
     await callback_query.bot.edit_message_text(chat_id=callback_query.from_user.id,
                                                message_id=callback_query.message.message_id,
                                                text=message_text, parse_mode="Markdown", reply_markup=keyboard)
@@ -164,14 +168,15 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
         has_prev_logs = index > 0
         if not has_prev_logs:
             await bot.answer_callback_query(callback_query.id, text="📑 Вы уже в самом начале!")
+            return
+        logs = await read_logs()
         if index >= limit:
             index -= limit
-        await state.update_data(logs_index=index)  # Update state data instead of bot data
+        await state.update_data(logs_index=index)
         await callback_query.answer()
-        # Show loading notification
         await bot.answer_callback_query(callback_query.id, text="Загрузка логов... ⏱️")
-        # Edit the existing message with the updated logs
         await show_logs(callback_query, state)
+
 
     elif button_text == 'next_logs':
         data = await state.get_data()
@@ -181,14 +186,17 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
         has_next_logs = (index + limit) < len(logs)
         if not has_next_logs:
             await bot.answer_callback_query(callback_query.id, text="📑 Следующих логов ещё нет, пожалуйста, подождите.")
+            return  # Return here to avoid editing the message
         if index + limit < len(logs):
             index += limit
-        await state.update_data(logs_index=index)  # Update state data instead of bot data
+        await state.update_data(logs_index=index)
         await callback_query.answer()
-        # Show loading notification
         await bot.answer_callback_query(callback_query.id, text="Загрузка логов... ⏱️")
-        # Edit the existing message with the updated logs
-        await show_logs(callback_query, state)
+        new_message_text = "\n".join(logs[index:index + limit])  # Replace with your logic to generate the message text
+        if new_message_text != callback_query.message.text:
+            await show_logs(callback_query, state)
+        else:
+            return
 
     elif button_text == 'done':
         await bot.delete_message(callback_query.from_user.id, callback_query.message.message_id)

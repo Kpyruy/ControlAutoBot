@@ -2,6 +2,7 @@ import asyncio
 import subprocess
 import aiohttp
 import time
+import os
 
 async def initialize_settings():
     lines = [
@@ -15,35 +16,38 @@ async def initialize_settings():
         file.writelines(lines)
 
 async def clear_logs():
-    lines = []
-    with open('head/values/settings.txt', 'w', encoding='utf-8') as file:
-        file.writelines(lines)
+    with open('head/values/logs.txt', 'w', encoding='utf-8') as file:
+        file.truncate(0)
+
+
+async def main():
+    # Выполнить инициализацию настроек и очистку логов только один раз
+    await clear_logs()
+    await initialize_settings()
+
+    # Запуск файла la_start.py в отдельном процессе
+    la_start_process = subprocess.Popen(['python', 'head/la_start.py'])
+
+    # Запуск файла la_bot.py в отдельном процессе
+    la_bot_process = subprocess.Popen(['python', 'head/la_bot.py'])
+
+    try:
+        # Ожидание завершения процессов при получении KeyboardInterrupt
+        la_start_process.wait()
+        la_bot_process.wait()
+    except KeyboardInterrupt:
+        # Прерывание выполнения процессов при получении KeyboardInterrupt
+        la_start_process.terminate()
+        la_bot_process.terminate()
+
+    while True:
+        with open('head/values/username.txt', 'r') as file:
+            username = file.read().strip()
+
+        with open('head/values/message.txt', 'r') as file:
+            message = file.read().strip()
+
+        time.sleep(1)
 
 loop = asyncio.get_event_loop()
-loop.run_until_complete(clear_logs())
-loop.run_until_complete(initialize_settings())
-
-# Запуск файла la_start.py в отдельном процессе
-la_start_process = subprocess.Popen(['python', 'head/la_start.py'])
-
-# Запуск файла la_bot.py в отдельном процессе
-la_bot_process = subprocess.Popen(['python', 'head/la_bot.py'])
-
-try:
-    # Ожидание завершения процессов при получении KeyboardInterrupt
-    la_start_process.wait()
-    la_bot_process.wait()
-except KeyboardInterrupt:
-    # Прерывание выполнения процессов при получении KeyboardInterrupt
-    la_start_process.terminate()
-    la_bot_process.terminate()
-
-
-while True:
-    with open('head/values/username.txt', 'r') as file:
-        username = file.read().strip()
-
-    with open('head/values/message.txt', 'r') as file:
-        message = file.read().strip()
-
-    time.sleep(1)
+loop.run_until_complete(main())
