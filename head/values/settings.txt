@@ -1,5 +1,5 @@
 Pause==False
-formatted_time==0 часов, 0 минут, 15 секунд
+formatted_time==0 часов, 0 минут, 16 секунд
 stop_count==0
-sent_messages==11
+sent_messages==12
 flood_wait==0
