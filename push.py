@@ -43,6 +43,4 @@ async def main():
         la_bot_process.terminate()
         flood_update_process.terminate()
 
-
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
+asyncio.run(main())

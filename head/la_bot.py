@@ -153,7 +153,7 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
         formatted_time, stop_count, sent_messages, flood_wait = await read_settings()
         statistics = f"⌛ Общее время работы бота: *{formatted_time}*\n📨 Количество отправленных сообщений: *{sent_messages}*\n🛑 Количество остановок: *{stop_count}*"
         if flood_wait > 0:
-            statistics += f"\n\n🕒 Отсчет времени до нуля FloodWait: *{flood_wait}*"
+            statistics += f"\n\n🕒 Отсчет времени до FloodWait: *{flood_wait}*"
         keyboard = types.InlineKeyboardMarkup()
         refresh_button = types.InlineKeyboardButton(text='Обновить 🔄️', callback_data='refresh_statistics')
         logs_button = types.InlineKeyboardButton(text='Логи 🔣', callback_data='logs')

@@ -19,8 +19,8 @@ async def send_message(message, username):
         await client.send_message(entity, message)
     except FloodWaitError as e:
         write_to_logs(f"Waiting for {e.seconds} seconds")
-        await asyncio.sleep(e.seconds)
         await update_flood_wait(e.seconds)  # Запись значения flood_wait в файл
+        await asyncio.sleep(e.seconds)
     except Exception as ex:
         print(f"Error: {ex}")
 
