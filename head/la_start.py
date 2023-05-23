@@ -14,7 +14,7 @@ client = TelegramClient('anon', API_ID, API_HASH)
 
 async def send_message(message, username):
     entity = await client.get_input_entity(username)
-    await asyncio.sleep(random.uniform(1.0, 1.3))
+    await asyncio.sleep(random.uniform(0.1, 0.2))
     try:
         await client.send_message(entity, message)
     except FloodWaitError as e:
@@ -26,10 +26,10 @@ async def send_message(message, username):
 
 
 async def update_flood_wait(new_value):
-    with open('head/values/settings.txt', 'r', encoding='cp1251') as file:
+    with open('head/values/flood_wait.txt', 'r', encoding='cp1251') as file:
         lines = file.readlines()
-    lines[4] = f"flood_wait=={new_value}\n"  # Запись нового значения flood_wait
-    with open('head/values/settings.txt', 'w', encoding='cp1251') as file:
+    lines[0] = f"flood_wait=={new_value}\n"  # Запись нового значения flood_wait
+    with open('head/values/flood_wait.txt', 'w', encoding='cp1251') as file:
         file.writelines(lines)
 
 async def read_values_from_files():

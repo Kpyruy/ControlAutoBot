@@ -7,8 +7,7 @@ async def initialize_settings():
         "Pause==False\n",
         "formatted_time==0 часов, 0 минут, 0 секунд\n",
         "stop_count==0\n",
-        "sent_messages==0\n",
-        "flood_wait==0\n"
+        "sent_messages==0\n"
     ]
     with open('head/values/settings.txt', 'w', encoding='cp1251') as file:
         file.writelines(lines)
