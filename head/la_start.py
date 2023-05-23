@@ -18,10 +18,19 @@ async def send_message(message, username):
     try:
         await client.send_message(entity, message)
     except FloodWaitError as e:
-        print(f"Waiting for {e.seconds} seconds")
+        write_to_logs(f"Waiting for {e.seconds} seconds")
         await asyncio.sleep(e.seconds)
+        await update_flood_wait(e.seconds)  # Запись значения flood_wait в файл
     except Exception as ex:
         print(f"Error: {ex}")
+
+
+async def update_flood_wait(new_value):
+    with open('head/values/settings.txt', 'r', encoding='cp1251') as file:
+        lines = file.readlines()
+    lines[4] = f"flood_wait=={new_value}\n"  # Запись нового значения flood_wait
+    with open('head/values/settings.txt', 'w', encoding='cp1251') as file:
+        file.writelines(lines)
 
 async def read_values_from_files():
     with open('head/values/username.txt', 'r', encoding='utf-8-sig') as file:
