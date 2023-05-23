@@ -32,7 +32,8 @@ async def read_settings():
     formatted_time = lines[1].split("==")[1].strip()
     stop_count = lines[2].split("==")[1].strip()
     sent_messages = lines[3].split("==")[1].strip()
-    return formatted_time, stop_count, sent_messages
+    flood_wait = int(lines[4].split("==")[1].strip())
+    return formatted_time, stop_count, sent_messages, flood_wait
 
 async def read_logs():
     with open('head/values/logs.txt', 'r', encoding='utf-8') as file:
@@ -102,8 +103,10 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
 
     elif button_text == 'statistics_category':
         # Создание и отправка сообщения с кнопками категории "Статистика"
-        formatted_time, stop_count, sent_messages = await read_settings()
+        formatted_time, stop_count, sent_messages, flood_wait = await read_settings()
         statistics = f"⌛ Общее время работы бота: *{formatted_time}*\n📨 Количество отправленных сообщений: *{sent_messages}*\n🛑 Количество остановок: *{stop_count}*"
+        if flood_wait > 0:
+            statistics += f"\n\n🕒 Отсчет времени FloodWait: *{flood_wait}*"
         keyboard = types.InlineKeyboardMarkup()
         refresh_button = types.InlineKeyboardButton(text='Обновить 🔄️', callback_data='refresh_statistics')
         logs_button = types.InlineKeyboardButton(text='Логи 🔣', callback_data='logs')
@@ -147,8 +150,10 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
         await bot.answer_callback_query(callback_query.id, text="▶️ Отправка сообщений возобновлена!")
 
     elif button_text == 'refresh_statistics':
-        formatted_time, stop_count, sent_messages = await read_settings()
+        formatted_time, stop_count, sent_messages, flood_wait = await read_settings()
         statistics = f"⌛ Общее время работы бота: *{formatted_time}*\n📨 Количество отправленных сообщений: *{sent_messages}*\n🛑 Количество остановок: *{stop_count}*"
+        if flood_wait > 0:
+            statistics += f"\n\n🕒 Отсчет времени до нуля FloodWait: *{flood_wait}*"
         keyboard = types.InlineKeyboardMarkup()
         refresh_button = types.InlineKeyboardButton(text='Обновить 🔄️', callback_data='refresh_statistics')
         logs_button = types.InlineKeyboardButton(text='Логи 🔣', callback_data='logs')

@@ -41,11 +41,21 @@ async def main():
         la_bot_process.terminate()
 
     while True:
-        with open('head/values/username.txt', 'r') as file:
-            username = file.read().strip()
+        with open('head/values/settings.txt', 'r', encoding='cp1251') as file:
+            lines = file.readlines()
+        flood_wait = int(lines[4].split("==")[1].strip())
 
-        with open('head/values/message.txt', 'r') as file:
-            message = file.read().strip()
+        while flood_wait > 0:
+            flood_wait -= 1
+            lines[4] = f"flood_wait=={flood_wait}\n"
+            with open('head/values/settings.txt', 'w', encoding='cp1251') as file:
+                file.writelines(lines)
+            time.sleep(1)
+
+        # Проверка на изменение значения flood_wait
+        new_flood_wait = int(lines[4].split("==")[1].strip())
+        if new_flood_wait > 0:
+            continue
 
         time.sleep(1)
 
