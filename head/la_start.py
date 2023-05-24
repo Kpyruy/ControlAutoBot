@@ -14,7 +14,7 @@ client = TelegramClient('anon', API_ID, API_HASH)
 
 async def send_message(message, username):
     entity = await client.get_input_entity(username)
-    await asyncio.sleep(random.uniform(0.1, 0.2))
+    await asyncio.sleep(random.uniform(1.0, 1.35))
     try:
         await client.send_message(entity, message)
     except FloodWaitError as e:
