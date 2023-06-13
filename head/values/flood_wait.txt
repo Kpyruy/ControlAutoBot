@@ -1,1 +1,1 @@
-flood_wait==506
+flood_wait==0

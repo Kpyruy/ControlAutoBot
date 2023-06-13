@@ -1,4 +1,3 @@
-Pause==False
-formatted_time==0 часов, 0 минут, 0 секунд
+formatted_time==0 часов, 1 минута, 35 секунд
 stop_count==0
-sent_messages==0
+sent_messages==73

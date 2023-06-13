@@ -6,9 +6,17 @@ from telethon.errors.rpcerrorlist import FloodWaitError
 from telethon.sync import TelegramClient
 import random
 import time
+import os
+from configparser import ConfigParser
 
-API_ID = '28030129'
-API_HASH = '66332b905574810cfe865714c2cd743d'
+#API_ID = '28030129'
+#API_HASH = '66332b905574810cfe865714c2cd743d'
+
+config = ConfigParser()
+config.read('private/.env')
+
+API_ID = config.get('API', 'API_ID')
+API_HASH = config.get('API', 'API_HASH')
 
 client = TelegramClient('anon', API_ID, API_HASH)
 
@@ -49,7 +57,7 @@ with client:
 
     # Проверка файла settings.txt для определения статуса (остановлено/возобновлено)
     def check_status():
-        with open('head/values/settings.txt', 'r', encoding='cp1251') as file:
+        with open('head/values/pause.txt', 'r', encoding='cp1251') as file:
             status = file.readline().strip()  # Читаем только первую строку
         return status == 'Pause==False'
 
@@ -59,9 +67,9 @@ with client:
         lines = []
         with open('head/values/settings.txt', 'r', encoding='cp1251') as file:
             lines = file.readlines()
-        lines[1] = f"formatted_time=={formatted_time}\n"
-        lines[2] = f"stop_count=={stop_count}\n"
-        lines[3] = f"sent_messages=={sent_messages}\n"
+        lines[0] = f"formatted_time=={formatted_time}\n"
+        lines[1] = f"stop_count=={stop_count}\n"
+        lines[2] = f"sent_messages=={sent_messages}\n"
         with open('head/values/settings.txt', 'w', encoding='cp1251') as file:
             file.writelines(lines)
 
