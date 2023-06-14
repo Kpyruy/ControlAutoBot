@@ -1,2 +1,2 @@
-message_auto==None
-message_count==0
+message_auto == None
+message_count == 0

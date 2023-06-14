@@ -44,8 +44,15 @@ async def send_notification():
 async def write_message_content():
     _, _, message_auto = await read_autosend()
     message_content = message_auto
-    with open('head/values/message.txt', 'w', encoding='utf-8') as file:
+    with open('head/values/message.txt', 'w', encoding='utf-8-sig') as file:
         file.write(f"{message_content}")
+
+async def write_residual():
+    with open('head/values/residual_message.txt', 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+    residual_message = lines[0]
+    with open('head/values/message.txt', 'w', encoding='utf-8-sig') as file:
+        file.write(f"{residual_message}")
 
 async def read_autosend():
     with open('head/values/autosend_data.txt', 'r', encoding='cp1251') as file:
@@ -58,17 +65,17 @@ async def read_autosend():
     return autosend, message_count, message_auto
 
 async def write_autosend_content(message_auto):
-    with open('head/values/autosend_data.txt', 'r') as file:
+    with open('head/values/autosend_data.txt', 'r', encoding='cp1251') as file:
         lines = file.readlines()
     lines[0] = f"message_auto=={message_auto}\n"
-    with open('head/values/autosend_data.txt', 'w') as file:
+    with open('head/values/autosend_data.txt', 'w', encoding='cp1251') as file:
         file.writelines(lines)
 
 async def write_autosend_count(message_count):
-    with open('head/values/autosend_data.txt', 'r') as file:
+    with open('head/values/autosend_data.txt', 'r', encoding='cp1251') as file:
         lines = file.readlines()
     lines[1] = f"message_count=={message_count}\n"
-    with open('head/values/autosend_data.txt', 'w') as file:
+    with open('head/values/autosend_data.txt', 'w', encoding='cp1251') as file:
         file.writelines(lines)
 
 async def write_autosend(autosend):
@@ -402,6 +409,7 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
         autosend = False
         message_auto = None
         message_count = 0
+        await write_residual()
         await write_autosend(autosend)
         await write_autosend_content(message_auto)
         await write_autosend_count(message_count)
@@ -484,10 +492,10 @@ async def update_message(message: types.Message, state: FSMContext):
     original_message_id = data.get('original_message_id')
 
     # Обновление сообщения пользователя
-    with open('head/values/autosend_data.txt', 'r') as file:
+    with open('head/values/autosend_data.txt', 'r', encoding='cp1251') as file:
         lines = file.readlines()
     lines[0] = f"message_auto=={message.text}\n"
-    with open('head/values/autosend_data.txt', 'w') as file:
+    with open('head/values/autosend_data.txt', 'w', encoding='cp1251') as file:
         file.writelines(lines)
 
     await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)

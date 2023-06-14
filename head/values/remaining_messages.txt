@@ -1,1 +1,1 @@
-remaining_messages==20
+remaining_messages==0
