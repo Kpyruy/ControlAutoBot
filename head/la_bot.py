@@ -156,6 +156,33 @@ async def start_command(message: types.Message):
     keyboard.add(change_category, loop_category, statistics_category)
     await message.reply("*🪄 Меню управления:*", parse_mode="Markdown", reply_markup=keyboard)
 
+@dp.message_handler(commands=['settings'])
+async def start_command(message: types.Message):
+    # Настройки через команду
+    settings_text = '*Настройки ⚙️*\n\n*🚧 Текущая задержка:* \n*🏙️ Последовательное сообщение:* \n*⛺️ Таймер:* '
+    keyboard = types.InlineKeyboardMarkup()
+    delay_messages = types.InlineKeyboardButton(text='Задержка 🚧', callback_data='delay_messages')
+    residual_message = types.InlineKeyboardButton(text='Послед. 🏙️', callback_data='residual_message')
+    timer_time = types.InlineKeyboardButton(text='Таймер ⛺️ ', callback_data='timer_time')
+    done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
+    keyboard.add(delay_messages, residual_message, timer_time)
+    keyboard.add(done)
+    await message.reply(text=settings_text, parse_mode="Markdown", reply_markup=keyboard)
+
+@dp.message_handler(commands=['help'])
+async def start_command(message: types.Message):
+    # Помощь и информация через команду
+    with open('head/command/help_text.txt', 'r', encoding='utf-8') as file:
+        help_text = file.read()
+
+    keyboard = types.InlineKeyboardMarkup()
+    settings = types.InlineKeyboardButton(text='Настройки ⚙️', callback_data='settings')
+    remote_menu = types.InlineKeyboardButton(text='Меню управления 🪄', callback_data='menu')
+    done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
+    keyboard.add(settings, remote_menu)
+    keyboard.add(done)
+    await message.reply(text=help_text, parse_mode="Markdown", reply_markup=keyboard)
+
 
 @dp.callback_query_handler(lambda callback_query: True)
 async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
@@ -164,7 +191,28 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
 
     keyboard = None  # Объявление переменной keyboard
 
-    if button_text == 'change_category':
+    if button_text == 'menu':
+        # Создание и отправка сообщения с кнопками
+        keyboard = types.InlineKeyboardMarkup()
+        change_category = types.InlineKeyboardButton(text='🌐 Изменение', callback_data='change_category')
+        loop_category = types.InlineKeyboardButton(text='🔄 Цикл', callback_data='loop_category')
+        statistics_category = types.InlineKeyboardButton(text='📊 Статистика', callback_data='statistics_category')
+        keyboard.add(change_category, loop_category, statistics_category)
+        await bot.send_message(callback_query.from_user.id, "*🪄 Меню управления:*", parse_mode="Markdown", reply_markup=keyboard)
+
+    if button_text == 'settings':
+        # Создание и отправка сообщения с кнопками
+        settings_text = '*Настройки ⚙️*\n\n*🚧 Текущая задержка:* \n*🏙️ Последовательное сообщение:* \n*⛺️ Таймер:* '
+        keyboard = types.InlineKeyboardMarkup()
+        delay_messages = types.InlineKeyboardButton(text='Задержка 🚧', callback_data='delay_messages')
+        residual_message = types.InlineKeyboardButton(text='Послед. 🏙️', callback_data='residual_message')
+        timer_time = types.InlineKeyboardButton(text='Таймер ⛺️ ', callback_data='timer_time')
+        done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
+        keyboard.add(delay_messages, residual_message, timer_time)
+        keyboard.add(done)
+        await bot.send_message(callback_query.from_user.id, text=settings_text, parse_mode="Markdown", reply_markup=keyboard)
+
+    elif button_text == 'change_category':
         # Создание и отправка сообщения с кнопками категории "Изменение"
         keyboard = types.InlineKeyboardMarkup()
         keyboard.add(types.InlineKeyboardButton(text='Изменить сообщение 📩', callback_data='change_message'))
@@ -310,7 +358,7 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
             keyboard.add(types.InlineKeyboardButton(text='🔙 Назад', callback_data='back'))
         await bot.edit_message_text(chat_id=callback_query.from_user.id,
                                     message_id=callback_query.message.message_id, text=autosend_message,
-                                    parse_mode="Markdown", reply_markup=keyboard, disable_web_page_preview=True)
+                                    parse_mode="None", reply_markup=keyboard, disable_web_page_preview=True)
 
 
     elif button_text == 'refresh_autosend':
@@ -340,7 +388,7 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
         last_button_press[callback_query.from_user.id] = time.time()
         await bot.edit_message_text(chat_id=callback_query.from_user.id,
                                     message_id=callback_query.message.message_id, text=autosend_message,
-                                    parse_mode="Markdown", reply_markup=keyboard, disable_web_page_preview=True)
+                                    parse_mode="None", reply_markup=keyboard, disable_web_page_preview=True)
 
     # Обработчик действия для кнопки "Запустить авто-отправку"
     elif button_text == 'enable_autosend':
@@ -402,7 +450,7 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
         keyboard.add(types.InlineKeyboardButton(text='Выключить ❌️', callback_data='decline'))
 
         await bot.edit_message_text(chat_id=callback_query.from_user.id, message_id=callback_query.message.message_id,
-                                    text=autosend_message, parse_mode="Markdown", reply_markup=keyboard)
+                                    text=autosend_message, parse_mode="None", reply_markup=keyboard)
 
     # Обработчик действия для кнопки "Отменить"
     elif callback_query.data == 'decline':
@@ -440,7 +488,9 @@ async def update_message(message: types.Message, state: FSMContext):
     await state.finish()  # Завершение состояния
 
     # Уведомление об изменении сообщения
-    await bot.send_message(chat_id=message.chat.id, text=f"✉️ Сообщение изменено на: {message.text}")
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(types.InlineKeyboardButton(text='Выполнено! ✅', callback_data='done'))
+    await bot.send_message(chat_id=message.chat.id, text=f"✉️ Сообщение изменено на: {message.text}", reply_markup=keyboard, disable_web_page_preview=True)
 
 @dp.message_handler(state=UserInput.username)
 async def update_username(message: types.Message, state: FSMContext):
@@ -451,7 +501,9 @@ async def update_username(message: types.Message, state: FSMContext):
     await state.finish()  # Завершение состояния
 
     # Уведомление об изменении имени пользователя
-    await bot.send_message(chat_id=message.chat.id, text=f"👁️ Имя пользователя изменено на: {message.text}")
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.add(types.InlineKeyboardButton(text='Выполнено! ✅', callback_data='done'))
+    await bot.send_message(chat_id=message.chat.id, text=f"👁️ Имя пользователя изменено на: {message.text}", reply_markup=keyboard, disable_web_page_preview=True)
 
 
 @dp.callback_query_handler(lambda query: query.data == 'decline', state=UserInput.message_auto)
@@ -502,17 +554,17 @@ async def update_message(message: types.Message, state: FSMContext):
     await state.finish()
     autosend, message_count, message_auto = await read_autosend()
     if message_count != "0":
-        content_autosend = f"*🧭 Заданное количество сообщений:* {message_count}\n⛽️ *Заданный текст:* {message.text}"
+        content_autosend = f"🧭 Заданное количество сообщений: {message_count}\n⛽️ Заданный текст: {message.text}"
         keyboard = types.InlineKeyboardMarkup()
         keyboard.add(types.InlineKeyboardButton(text='Подтвердить ❇️', callback_data='confirm'))
         keyboard.add(types.InlineKeyboardButton(text='Отменить ⛔', callback_data='decline'))
     else:
-        content_autosend = f"🧭 Нужно ввести количество сообщений!\n⛽️ *Заданный текст:* {message.text}"
+        content_autosend = f"🧭 Нужно ввести количество сообщений!\n⛽️ Заданный текст: {message.text}"
         keyboard = types.InlineKeyboardMarkup()
         keyboard.add(types.InlineKeyboardButton(text='Ввести количество 🧮', callback_data='select_count'))
         keyboard.add(types.InlineKeyboardButton(text='❌ Отмена', callback_data='decline'))
     # Изменение сообщения пользователя с помощью bot.edit_message_text
-    await bot.edit_message_text(chat_id=message.chat.id, message_id=original_message_id, text=content_autosend, parse_mode="Markdown", reply_markup=keyboard)
+    await bot.edit_message_text(chat_id=message.chat.id, message_id=original_message_id, text=content_autosend, parse_mode="None", reply_markup=keyboard)
 
 @dp.message_handler(state=UserInput.message_count)
 async def update_message(message: types.Message, state: FSMContext):
@@ -527,10 +579,10 @@ async def update_message(message: types.Message, state: FSMContext):
     original_message_id = data.get('original_message_id')
 
     # Обновление сообщения пользователя
-    with open('head/values/autosend_data.txt', 'r') as file:
+    with open('head/values/autosend_data.txt', 'r', encoding='cp1251') as file:
         lines = file.readlines()
     lines[1] = f"message_count=={message.text}\n"
-    with open('head/values/autosend_data.txt', 'w') as file:
+    with open('head/values/autosend_data.txt', 'w', encoding='cp1251') as file:
         file.writelines(lines)
 
     await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
@@ -538,7 +590,7 @@ async def update_message(message: types.Message, state: FSMContext):
 
     autosend, message_count, message_auto = await read_autosend()
     if message_auto != "None":
-        count_autosend = f"*🧭 Заданное количество сообщений:* {message.text}\n⛽️ *Заданный текст:* {message_auto}"
+        count_autosend = f"🧭 Заданное количество сообщений: {message.text}\n⛽️ Заданный текст: {message_auto}"
         keyboard = types.InlineKeyboardMarkup()
         keyboard.add(types.InlineKeyboardButton(text='Подтвердить ❇️', callback_data='confirm'))
         keyboard.add(types.InlineKeyboardButton(text='Отменить ⛔', callback_data='decline'))
@@ -548,7 +600,7 @@ async def update_message(message: types.Message, state: FSMContext):
         keyboard.add(types.InlineKeyboardButton(text='Ввести содержание 📔', callback_data='select_content'))
         keyboard.add(types.InlineKeyboardButton(text='❌ Отмена', callback_data='decline'))
     # Изменение сообщения пользователя с помощью bot.edit_message_text
-    await bot.edit_message_text(chat_id=message.chat.id, message_id=original_message_id, text=count_autosend, parse_mode="Markdown", reply_markup=keyboard)
+    await bot.edit_message_text(chat_id=message.chat.id, message_id=original_message_id, text=count_autosend, parse_mode="None", reply_markup=keyboard)
 
 
 async def main():
