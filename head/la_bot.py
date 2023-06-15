@@ -200,7 +200,7 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
         keyboard.add(change_category, loop_category, statistics_category)
         await bot.send_message(callback_query.from_user.id, "*🪄 Меню управления:*", parse_mode="Markdown", reply_markup=keyboard)
 
-    if button_text == 'settings':
+    elif button_text == 'settings':
         # Создание и отправка сообщения с кнопками
         settings_text = '*Настройки ⚙️*\n\n*🚧 Текущая задержка:* \n*🏙️ Последовательное сообщение:* \n*⛺️ Таймер:* '
         keyboard = types.InlineKeyboardMarkup()
