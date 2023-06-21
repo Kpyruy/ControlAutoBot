@@ -5,23 +5,20 @@ import la_bot
 def check_remaining_update():
     try:
         while True:
-            with open('head/values/remaining_messages.txt', 'r', encoding='utf-8') as file:
-                lines = file.readlines()
-
-            if len(lines) >= 1:
-                current_remaining_messages = int(lines[0].split("==")[1].strip())
-
-                if current_remaining_messages > 0:
-                    decrement_remaining_messages(current_remaining_messages, send_messages)
-
             with open('head/values/settings.txt', 'r', encoding='cp1251') as file:
                 lines = file.readlines()
-            send_messages = int(lines[2].split("==")[1].strip())
 
             if len(lines) >= 3:
-                sent_messages = int(lines[2].split("==")[1].strip())
-                if sent_messages >= current_remaining_messages:
-                    pass
+                send_messages = int(lines[2].split("==")[1].strip())
+
+                with open('head/values/remaining_messages.txt', 'r', encoding='utf-8') as file:
+                    lines = file.readlines()
+
+                if len(lines) >= 1:
+                    current_remaining_messages = int(lines[0].split("==")[1].strip())
+
+                    if current_remaining_messages > 0:
+                        decrement_remaining_messages(current_remaining_messages, send_messages)
 
             time.sleep(1)
 
@@ -56,6 +53,8 @@ def decrement_remaining_messages(remaining_messages, send_messages):
 
         with open('head/values/new_message_value.txt', 'w', encoding='utf-8') as file:
             file.write(f"new_value=={new_value}\n")
+        with open('head/values/remaining_messages.txt', 'w', encoding='utf-8') as file:
+            file.write(f"remaining_messages==0\n")
 
         with open('head/values/residual_message.txt', 'r', encoding='utf-8') as file:
             lines = file.readlines()

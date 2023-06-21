@@ -1,5 +1,7 @@
 import os
+import re
 import time
+import random
 import logging
 import asyncio
 from aiogram import Bot, Dispatcher, types
@@ -31,6 +33,10 @@ class UserInput(StatesGroup):
     username = State()
     message_count = State()
     message_auto = State()
+    delay_count = State()
+    residual_message = State()
+    first_value = State()
+    second_value = State()
     back = State()
 
 async def send_notification():
@@ -40,6 +46,46 @@ async def send_notification():
     done_button = types.InlineKeyboardButton(text='Выполнено! ✅', callback_data='done')
     keyboard.row(done_button)
     await bot.send_message(callback_query.from_user.id, send_notification, parse_mode="Markdown", reply_markup=keyboard)
+
+async def read_delay():
+    with open('head/values/delay.txt', 'r', encoding='cp1251') as file:
+        delay_expression = file.read().strip()
+
+        if delay_expression.startswith('random.uniform'):
+            matches = re.findall(r'random.uniform\((.*?), (.*?)\)', delay_expression)
+            if matches:
+                lower_bound, upper_bound = matches[0]
+                delay = f"{float(lower_bound)}, {float(upper_bound)}"
+        elif delay_expression.isdigit():
+            delay = float(delay_expression)
+        else:
+           delay = float(delay_expression)
+
+    return delay
+
+async def read_randomise():
+    with open('head/values/randomise.txt', 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+    first_value = lines[0].split("==")[1].strip()
+    second_value = lines[1].split("==")[1].strip()
+    return first_value, second_value
+
+async def write_randomise(first_value, second_value):
+    lines = []
+    with open('head/values/randomise.txt', 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+
+    lines[0] = f"first_value=={first_value}\n"
+    lines[1] = f"second_value=={second_value}\n"
+
+    with open('head/values/randomise.txt', 'w', encoding='utf-8') as file:
+        file.writelines(lines)
+
+async def read_residual_message():
+    with open('head/values/residual_message.txt', 'r', encoding='utf-8') as file:
+        lines = file.readlines()
+    residual_message = lines[0]
+    return residual_message
 
 async def write_message_content():
     _, _, message_auto = await read_autosend()
@@ -97,6 +143,13 @@ async def read_new_value():
         lines = file.readlines()
     last_of_messages = lines[0].split("==")[1].strip()
     return last_of_messages
+
+async def stop_autosend():
+    with open('head/values/remaining_messages.txt', 'w', encoding='utf-8') as file:
+        file.write(f"remaining_messages==0\n")
+    with open('head/values/new_message_value.txt', 'w', encoding='utf-8') as file:
+        file.write(f"new_value==0\n")
+
 
 async def read_settings():
     # Чтение данных из файла settings.txt
@@ -158,8 +211,11 @@ async def start_command(message: types.Message):
 
 @dp.message_handler(commands=['settings'])
 async def start_command(message: types.Message):
+    delay = await read_delay()
+    residual_message = await read_residual_message()
+
     # Настройки через команду
-    settings_text = '*Настройки ⚙️*\n\n*🚧 Текущая задержка:* \n*🏙️ Последовательное сообщение:* \n*⛺️ Таймер:* '
+    settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*⛺️ Таймер:* '
     keyboard = types.InlineKeyboardMarkup()
     delay_messages = types.InlineKeyboardButton(text='Задержка 🚧', callback_data='delay_messages')
     residual_message = types.InlineKeyboardButton(text='Послед. 🏙️', callback_data='residual_message')
@@ -201,8 +257,11 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
         await bot.send_message(callback_query.from_user.id, "*🪄 Меню управления:*", parse_mode="Markdown", reply_markup=keyboard)
 
     elif button_text == 'settings':
+        delay = await read_delay()
+        residual_message = await read_residual_message()
+
         # Создание и отправка сообщения с кнопками
-        settings_text = '*Настройки ⚙️*\n\n*🚧 Текущая задержка:* \n*🏙️ Последовательное сообщение:* \n*⛺️ Таймер:* '
+        settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*⛺️ Таймер:* '
         keyboard = types.InlineKeyboardMarkup()
         delay_messages = types.InlineKeyboardButton(text='Задержка 🚧', callback_data='delay_messages')
         residual_message = types.InlineKeyboardButton(text='Послед. 🏙️', callback_data='residual_message')
@@ -443,10 +502,9 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
         await write_autosend_content(message_auto)
         await write_autosend(autosend)
 
-        last_of_messages = await read_new_value()
-        autosend_message = f"❇️ Авто-отправка запущена!\n\n🧭 Заданное количество сообщений: {message_count}\n⛽️ Заданный текст: {message_auto}\n🪂 Осталось сообщений: {last_of_messages}"
+        autosend_message = f"❇️ Авто-отправка запущена!\n\n🧭 Заданное количество сообщений: {message_count}\n⛽️ Заданный текст: {message_auto}\n🪂 Осталось сообщений: ~"
         keyboard = types.InlineKeyboardMarkup()
-        keyboard.add(types.InlineKeyboardButton(text='Обновить 🔄️', callback_data='refresh_autosend'))
+        keyboard.add(types.InlineKeyboardButton(text='Обновить 🔄️', callback_data='autosend'))
         keyboard.add(types.InlineKeyboardButton(text='Выключить ❌️', callback_data='decline'))
 
         await bot.edit_message_text(chat_id=callback_query.from_user.id, message_id=callback_query.message.message_id,
@@ -461,12 +519,169 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
         await write_autosend(autosend)
         await write_autosend_content(message_auto)
         await write_autosend_count(message_count)
+        await stop_autosend()
         autosend_message = "💢 Авто-отправка выключена!"
         keyboard = types.InlineKeyboardMarkup()
         keyboard.add(types.InlineKeyboardButton(text='Запустить авто-отправку 🚀', callback_data='enable_autosend'))
         keyboard.add(types.InlineKeyboardButton(text='🔙 Назад', callback_data='back'))
         await bot.edit_message_text(chat_id=callback_query.from_user.id,
                                     message_id=callback_query.message.message_id, text=autosend_message,
+                                    parse_mode="Markdown", reply_markup=keyboard, disable_web_page_preview=True)
+
+    # Обработчик действия для кнопки "Изменить задержку"
+    elif button_text == 'delay_messages':
+        delay_msg = "*🚨 Выберите время задержки:*"
+        keyboard = types.InlineKeyboardMarkup()
+        onesec = types.InlineKeyboardButton(text='1 секунда 🕐', callback_data='1s')
+        twosec = types.InlineKeyboardButton(text='2 секунды 🕑', callback_data='2s')
+        threesec = types.InlineKeyboardButton(text='3 секунды 🕒', callback_data='3s')
+        randomdelay = types.InlineKeyboardButton(text='Рандом. 🎒', callback_data='random_delay')
+        inputdelay = types.InlineKeyboardButton(text='Ввести 🧑‍⚖️ ', callback_data='input_delay')
+        back = types.InlineKeyboardButton(text='Отмена ⛔', callback_data='back')
+        keyboard.row(onesec, twosec, threesec)
+        keyboard.row(inputdelay, randomdelay)
+        keyboard.row(back)
+
+
+        await bot.edit_message_text(chat_id=callback_query.from_user.id,
+                                    message_id=callback_query.message.message_id, text=delay_msg,
+                                    parse_mode="Markdown", reply_markup=keyboard, disable_web_page_preview=True)
+
+    elif button_text == '1s':
+        # Обновление задержки между сообщениями (1 секунда)
+        delay = "1"
+        with open('head/values/delay.txt', 'w', encoding='utf-8') as file:
+            file.writelines(f"{delay}")
+        keyboard = types.InlineKeyboardMarkup()
+        keyboard.add(types.InlineKeyboardButton(text='Выполнено! ✅', callback_data='done'))
+        await bot.send_message(chat_id=callback_query.from_user.id, text=f"️🕐 Время успешно было изменено на {delay}!", reply_markup=keyboard, disable_web_page_preview=True)
+
+    elif button_text == '2s':
+        # Обновление задержки между сообщениями (2 секунды)
+        delay = "2"
+        with open('head/values/delay.txt', 'w', encoding='utf-8') as file:
+            file.writelines(f"{delay}")
+        keyboard = types.InlineKeyboardMarkup()
+        keyboard.add(types.InlineKeyboardButton(text='Выполнено! ✅', callback_data='done'))
+        await bot.send_message(chat_id=callback_query.from_user.id, text=f"️🕐 Время успешно было изменено на {delay}!", reply_markup=keyboard, disable_web_page_preview=True)
+
+    elif button_text == '3s':
+        # Обновление задержки между сообщениями (3 секунды)
+        delay = "3"
+        with open('head/values/delay.txt', 'w', encoding='utf-8') as file:
+            file.write(f"{delay}")
+        keyboard = types.InlineKeyboardMarkup()
+        keyboard.add(types.InlineKeyboardButton(text='Выполнено! ✅', callback_data='done'))
+        await bot.send_message(chat_id=callback_query.from_user.id, text=f"️🕐 Время успешно было изменено на {delay}!", reply_markup=keyboard, disable_web_page_preview=True)
+
+    # Обработчик действия для кнопки "Запустить ввести значение задержки"
+    elif button_text == 'input_delay':
+        enable_autosend = "📢 Воспользуйтесь кнопкой, чтобы ввести значение."
+        keyboard = types.InlineKeyboardMarkup()
+        input_delay = types.InlineKeyboardButton(text='Ввести число 🛎️', callback_data='select_count_delay')
+        no = types.InlineKeyboardButton(text='❌ Отмена', callback_data='delay_messages')
+        keyboard.row(input_delay)
+        keyboard.row(no)
+        await bot.edit_message_text(chat_id=callback_query.from_user.id,
+                                    message_id=callback_query.message.message_id, text=enable_autosend,
+                                    parse_mode="Markdown", reply_markup=keyboard, disable_web_page_preview=True)
+
+    # Обработчик действия для кнопки "Выбрать количество"
+    elif button_text == 'select_count_delay':
+        content_message = "🛎️ Введите число задержки:"
+        keyboard = types.InlineKeyboardMarkup()
+        keyboard.add(types.InlineKeyboardButton(text='❌ Отмена', callback_data='delay_messages'))
+        await UserInput.delay_count.set()  # Установка состояния UserInput.delay_count
+        await state.update_data(keyboard=keyboard)  # Сохранение значения keyboard в состояние
+        message = await bot.edit_message_text(chat_id=callback_query.from_user.id,
+                                              message_id=callback_query.message.message_id, text=content_message,
+                                              parse_mode="Markdown", reply_markup=keyboard,
+                                              disable_web_page_preview=True)
+        await state.update_data(
+            original_message_id=message.message_id)  # Сохранение идентификатора сообщения в состояние
+
+    elif button_text == 'residual_message':
+        content_message = "🏙️ Введите последовательное сообщение:"
+        keyboard = types.InlineKeyboardMarkup()
+        keyboard.add(types.InlineKeyboardButton(text='❌ Отмена', callback_data='settings'))
+        await UserInput.residual_message.set()  # Установка состояния UserInput.delay_count
+        await state.update_data(keyboard=keyboard)  # Сохранение значения keyboard в состояние
+        message = await bot.edit_message_text(chat_id=callback_query.from_user.id,
+                                                  message_id=callback_query.message.message_id, text=content_message,
+                                                  parse_mode="Markdown", reply_markup=keyboard,
+                                                  disable_web_page_preview=True)
+        await state.update_data(
+            original_message_id=message.message_id)  # Сохранение идентификатора сообщения в состояние
+
+    elif button_text == 'random_delay':
+        random_delay = "🎲 Воспользуйтесь кнопкой, чтобы ввести значение рандомизированной задержки."
+        keyboard = types.InlineKeyboardMarkup()
+        input_first_value = types.InlineKeyboardButton(text='Ввести 1 значение 🈂️', callback_data='input_first')
+        input_second_value = types.InlineKeyboardButton(text='Ввести 2 значение 🈳', callback_data='input_second')
+        no = types.InlineKeyboardButton(text='❌ Отмена', callback_data='randomise_decline')
+        keyboard.row(input_first_value, input_second_value)
+        keyboard.row(no)
+        await bot.edit_message_text(chat_id=callback_query.from_user.id,
+                                    message_id=callback_query.message.message_id, text=random_delay,
+                                    parse_mode="Markdown", reply_markup=keyboard, disable_web_page_preview=True)
+
+    # Обработчик действия для кнопки "Выбрать содержание"
+    elif button_text == 'input_first':
+        content_message = "🈂️ Введите 1 значение:"
+        keyboard = types.InlineKeyboardMarkup()
+        keyboard.add(types.InlineKeyboardButton(text='❌ Отмена', callback_data='randomise_decline'))
+        await UserInput.first_value.set()  # Установка состояния UserInput.first_value.set
+        await state.update_data(keyboard=keyboard)  # Сохранение значения keyboard в состояние
+        message = await bot.edit_message_text(chat_id=callback_query.from_user.id,
+                                              message_id=callback_query.message.message_id, text=content_message,
+                                              parse_mode="Markdown", reply_markup=keyboard,
+                                              disable_web_page_preview=True)
+        await state.update_data(
+            original_message_id=message.message_id)  # Сохранение идентификатора сообщения в состояние
+
+    # Обработчик действия для кнопки "Выбрать количество"
+    elif button_text == 'input_second':
+        content_message = "🈳 Введите 2 значение:"
+        keyboard = types.InlineKeyboardMarkup()
+        keyboard.add(types.InlineKeyboardButton(text='❌ Отмена', callback_data='randomise_decline'))
+        await UserInput.second_value.set()  # Установка состояния UserInput.message_count
+        await state.update_data(keyboard=keyboard)  # Сохранение значения keyboard в состояние
+        message = await bot.edit_message_text(chat_id=callback_query.from_user.id,
+                                              message_id=callback_query.message.message_id, text=content_message,
+                                              parse_mode="Markdown", reply_markup=keyboard,
+                                              disable_web_page_preview=True)
+        await state.update_data(
+            original_message_id=message.message_id)  # Сохранение идентификатора сообщения в состояние
+
+
+    elif button_text == 'randomise_decline':
+        first_value = None
+        second_value = None
+
+        await write_randomise(first_value, second_value)
+
+        delay = await read_delay()
+        residual_message = await read_residual_message()
+
+        # Сообщение для изменения сообщения ввода
+        settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*⛺️ Таймер:* '
+        keyboard = types.InlineKeyboardMarkup()
+        delay_messages = types.InlineKeyboardButton(text='Задержка 🚧', callback_data='delay_messages')
+        residual_message = types.InlineKeyboardButton(text='Послед. 🏙️', callback_data='residual_message')
+        timer_time = types.InlineKeyboardButton(text='Таймер ⛺️ ', callback_data='timer_time')
+        done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
+        keyboard.add(delay_messages, residual_message, timer_time)
+        keyboard.add(done)
+        await bot.edit_message_text(chat_id=callback_query.from_user.id,
+                                    message_id=callback_query.message.message_id, text=settings_text,
+                                    parse_mode="Markdown", reply_markup=keyboard, disable_web_page_preview=True)
+
+    elif button_text == 'randomise_confirm':
+
+        first_value, second_value = await read_randomise()
+
+        await bot.edit_message_text(chat_id=callback_query.from_user.id,
+                                    message_id=callback_query.message.message_id, text=settings_text,
                                     parse_mode="Markdown", reply_markup=keyboard, disable_web_page_preview=True)
 
     elif button_text == 'done':
@@ -478,6 +693,255 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
         await bot.delete_message(callback_query.from_user.id, callback_query.message.message_id)  # Удаление сообщения
 
         await state.finish()  # Завершение состояния
+
+@dp.message_handler(state=UserInput.first_value)
+async def update_message(message: types.Message, state: FSMContext):
+    # Проверка, является ли введенное сообщение числом больше нуля
+    delay = message.text.strip().replace(',', '.')  # Заменяем запятую на точку
+    if delay.replace('.', '', 1).isdigit() and float(delay) > 0:
+        # Обновление сообщения пользователя
+        with open('head/values/randomise.txt', 'r', encoding='utf-8') as file:
+            lines = file.readlines()
+        lines[0] = f"first_value=={delay}\n"
+        with open('head/values/randomise.txt', 'w', encoding='utf-8') as file:
+            file.writelines(lines)
+
+        # Получение сохраненного идентификатора сообщения
+        first_value, second_value = await read_randomise()
+        data = await state.get_data()
+        original_message_id = data.get('original_message_id')
+
+        await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+        await state.finish()
+
+        if second_value != "None":
+            randomise_text = f"🈂️ Первое значение: {message.text}\n🈳 Второе значение: {second_value}"
+            keyboard = types.InlineKeyboardMarkup()
+            keyboard.add(types.InlineKeyboardButton(text='Подтвердить ❇️', callback_data='randomise_confirm'))
+            keyboard.add(types.InlineKeyboardButton(text='Отменить ⛔', callback_data='randomise_decline'))
+        else:
+            randomise_text = f"🈂️ Первое значение: {message.text}\n🈳 Нужно ввести второе значение!"
+            keyboard = types.InlineKeyboardMarkup()
+            keyboard.add(types.InlineKeyboardButton(text='Ввести 2 значение 🈳', callback_data='input_second'))
+            keyboard.add(types.InlineKeyboardButton(text='❌ Отмена', callback_data='randomise_decline'))
+        # Изменение сообщения пользователя с помощью bot.edit_message_text
+        await bot.edit_message_text(chat_id=message.chat.id, message_id=original_message_id, text=randomise_text, parse_mode="None", reply_markup=keyboard)
+    else:
+        await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+        await bot.answer_callback_query(callback_query_id=message.message_id, text="Нужно вводить число больше нуля! ☠️")
+        return
+
+@dp.message_handler(state=UserInput.second_value)
+async def update_message(message: types.Message, state: FSMContext):
+    # Проверка, является ли введенное сообщение числом больше нуля
+    delay = message.text.strip().replace(',', '.')  # Заменяем запятую на точку
+    if delay.replace('.', '', 1).isdigit() and float(delay) > 0:
+        # Обновление сообщения пользователя
+        with open('head/values/randomise.txt', 'r', encoding='utf-8') as file:
+            lines = file.readlines()
+        lines[1] = f"second_value=={delay}\n"
+        with open('head/values/randomise.txt', 'w', encoding='utf-8') as file:
+            file.writelines(lines)
+
+        # Получение сохраненного идентификатора сообщения
+        first_value, second_value = await read_randomise()
+        data = await state.get_data()
+        original_message_id = data.get('original_message_id')
+
+        await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+        await state.finish()
+
+        if first_value != "None":
+            randomise_text = f"🈂️ Первое значение: {first_value}\n🈳 Второе значение: {message.text}"
+            keyboard = types.InlineKeyboardMarkup()
+            keyboard.add(types.InlineKeyboardButton(text='Подтвердить ❇️', callback_data='randomise_confirm'))
+            keyboard.add(types.InlineKeyboardButton(text='Отменить ⛔', callback_data='randomise_decline'))
+        else:
+            randomise_text = f"🈂️ Нужно ввести первое значение!\n🈳 Второе значение: {message.text}"
+            keyboard = types.InlineKeyboardMarkup()
+            keyboard.add(types.InlineKeyboardButton(text='Ввести 1 значение 🈳', callback_data='input_first'))
+            keyboard.add(types.InlineKeyboardButton(text='❌ Отмена', callback_data='randomise_decline'))
+        # Изменение сообщения пользователя с помощью bot.edit_message_text
+        await bot.edit_message_text(chat_id=message.chat.id, message_id=original_message_id, text=randomise_text, parse_mode="None", reply_markup=keyboard)
+    else:
+        await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+        await bot.answer_callback_query(callback_query_id=message.message_id, text="Нужно вводить число больше нуля! ☠️")
+        return
+
+@dp.callback_query_handler(lambda query: query.data == 'randomise_decline', state=UserInput.first_value)
+async def cancel_first_value(query: types.CallbackQuery, state: FSMContext):
+    await state.finish()
+
+    delay = await read_delay()
+    residual_message = await read_residual_message()
+
+    # Сообщение для изменения сообщения ввода
+    settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*⛺️ Таймер:* '
+    keyboard = types.InlineKeyboardMarkup()
+    delay_messages = types.InlineKeyboardButton(text='Задержка 🚧', callback_data='delay_messages')
+    residual_message = types.InlineKeyboardButton(text='Послед. 🏙️', callback_data='residual_message')
+    timer_time = types.InlineKeyboardButton(text='Таймер ⛺️ ', callback_data='timer_time')
+    done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
+    keyboard.add(delay_messages, residual_message, timer_time)
+    keyboard.add(done)
+    await bot.edit_message_text(chat_id=query.message.chat.id, message_id=query.message.message_id, text=settings_text, parse_mode="Markdown", reply_markup=keyboard, disable_web_page_preview=True)
+
+@dp.callback_query_handler(lambda query: query.data == 'randomise_decline', state=UserInput.second_value)
+async def cancel_second_value(query: types.CallbackQuery, state: FSMContext):
+    await state.finish()
+
+    delay = await read_delay()
+    residual_message = await read_residual_message()
+
+    # Сообщение для изменения сообщения ввода
+    settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*⛺️ Таймер:* '
+    keyboard = types.InlineKeyboardMarkup()
+    delay_messages = types.InlineKeyboardButton(text='Задержка 🚧', callback_data='delay_messages')
+    residual_message = types.InlineKeyboardButton(text='Послед. 🏙️', callback_data='residual_message')
+    timer_time = types.InlineKeyboardButton(text='Таймер ⛺️ ', callback_data='timer_time')
+    done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
+    keyboard.add(delay_messages, residual_message, timer_time)
+    keyboard.add(done)
+    await bot.edit_message_text(chat_id=query.message.chat.id, message_id=query.message.message_id, text=settings_text, parse_mode="Markdown", reply_markup=keyboard, disable_web_page_preview=True)
+
+@dp.message_handler(state=UserInput.residual_message)
+async def update_message(message: types.Message, state: FSMContext):
+    # Получение сохраненного идентификатора сообщения
+    data = await state.get_data()
+    original_message_id = data.get('original_message_id')
+
+    # Обновление сообщения
+    with open('head/values/residual_message.txt', 'w', encoding='utf-8') as file:
+        file.write(message.text)
+    await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+    await state.finish()  # Завершение состояния
+
+    delay = await read_delay()
+    residual_message = await read_residual_message()
+
+    # Создание сообщение для уведомления пользователя
+    residual_message_text = f"*🌆 Последовательное сообщение изменено на:* {message.text}"
+    keyboard_complete = types.InlineKeyboardMarkup()
+    done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
+    keyboard_complete.add(done)
+
+    # Сообщение для изменения сообщения ввода
+    settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*⛺️ Таймер:* '
+    keyboard = types.InlineKeyboardMarkup()
+    delay_messages = types.InlineKeyboardButton(text='Задержка 🚧', callback_data='delay_messages')
+    residual_message = types.InlineKeyboardButton(text='Послед. 🏙️', callback_data='residual_message')
+    timer_time = types.InlineKeyboardButton(text='Таймер ⛺️ ', callback_data='timer_time')
+    done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
+    keyboard.add(delay_messages, residual_message, timer_time)
+    keyboard.add(done)
+
+    await bot.edit_message_text(chat_id=message.chat.id, message_id=original_message_id,
+                                text=settings_text,
+                                reply_markup=keyboard, parse_mode="Markdown",
+                                disable_web_page_preview=True)
+    complete_message = await bot.send_message(chat_id=message.chat.id,
+                                              text=residual_message_text,
+                                              reply_markup=keyboard_complete,
+                                              parse_mode="Markdown", disable_web_page_preview=True)
+
+    await asyncio.sleep(3)  # Задержка в 3 секунды
+    try:
+        await bot.delete_message(chat_id=complete_message.chat.id, message_id=complete_message.message_id)
+    except aiogram.utils.exceptions.MessageToDeleteNotFound:
+        pass
+
+@dp.callback_query_handler(lambda query: query.data == 'settings', state=UserInput.residual_message)
+async def cancel_delay_input(query: types.CallbackQuery, state: FSMContext):
+    await state.finish()
+    delay = await read_delay()
+    residual_message = await read_residual_message()
+
+    # Настройки через команду
+    settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*⛺️ Таймер:* '
+    keyboard = types.InlineKeyboardMarkup()
+    delay_messages = types.InlineKeyboardButton(text='Задержка 🚧', callback_data='delay_messages')
+    residual_message = types.InlineKeyboardButton(text='Послед. 🏙️', callback_data='residual_message')
+    timer_time = types.InlineKeyboardButton(text='Таймер ⛺️ ', callback_data='timer_time')
+    done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
+    keyboard.add(delay_messages, residual_message, timer_time)
+    keyboard.add(done)
+
+    await bot.edit_message_text(chat_id=query.message.chat.id,
+                                message_id=query.message.message_id, text=settings_text,
+                                parse_mode="Markdown", reply_markup=keyboard, disable_web_page_preview=True)
+
+@dp.message_handler(state=UserInput.delay_count)
+async def input_delay(message: types.Message, state: FSMContext):
+    # Получение сохраненного идентификатора сообщения
+    data = await state.get_data()
+    original_message_id = data.get('original_message_id')
+
+    delay = message.text.strip().replace(',', '.')  # Заменяем запятую на точку
+    if delay.replace('.', '', 1).isdigit() and float(delay) > 0:
+        with open('head/values/delay.txt', 'w', encoding='utf-8') as file:
+            file.write(delay)
+        await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+        await state.finish()
+        keyboard_complete = types.InlineKeyboardMarkup()
+        done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
+        keyboard_complete.add(done)
+
+        # Изменение сообщения с помощью original_message_id
+        delay = await read_delay()
+        residual_message_data = await read_residual_message()
+        settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message_data}\n*⛺️ Таймер:* '
+        keyboard = types.InlineKeyboardMarkup()
+        delay_messages = types.InlineKeyboardButton(text='Задержка 🚧', callback_data='delay_messages')
+        residual_message = types.InlineKeyboardButton(text='Послед. 🏙️', callback_data='residual_message')
+        timer_time = types.InlineKeyboardButton(text='Таймер ⛺️ ', callback_data='timer_time')
+        done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
+        keyboard.add(delay_messages, residual_message, timer_time)
+        keyboard.add(done)
+
+        await bot.edit_message_text(chat_id=message.chat.id, message_id=original_message_id,
+                                        text=settings_text,
+                                        reply_markup=keyboard, parse_mode="Markdown",
+                                        disable_web_page_preview=True)
+
+        complete_message = await bot.send_message(chat_id=message.chat.id,
+                                                  text=f"🚧 Задержка успешно установлена на: {delay}",
+                                                  reply_markup=keyboard_complete,
+                                                  parse_mode="Markdown", disable_web_page_preview=True)
+        await asyncio.sleep(3)  # Задержка в 3 секунды
+        try:
+            await bot.delete_message(chat_id=complete_message.chat.id, message_id=complete_message.message_id)
+        except aiogram.utils.exceptions.MessageToDeleteNotFound:
+            pass
+
+    else:
+        await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+        error_message = await bot.send_message(chat_id=message.chat.id,
+                                               text=f"*⚠️ Введено недопустимое значение задержки.*",
+                                               parse_mode="Markdown", disable_web_page_preview=True)
+        await asyncio.sleep(3)  # Задержка в 3 секунды
+        try:
+            await bot.delete_message(chat_id=error_message.chat.id, message_id=error_message.message_id)
+        except aiogram.utils.exceptions.MessageToDeleteNotFound:
+            pass
+
+@dp.callback_query_handler(lambda query: query.data == 'delay_messages', state=UserInput.delay_count)
+async def cancel_delay_input(query: types.CallbackQuery, state: FSMContext):
+    await state.finish()
+    delay_msg = "*🚨 Выберите время задержки:*"
+    keyboard = types.InlineKeyboardMarkup()
+    onesec = types.InlineKeyboardButton(text='1 секунда 🕐', callback_data='1s')
+    twosec = types.InlineKeyboardButton(text='2 секунды 🕑', callback_data='2s')
+    threesec = types.InlineKeyboardButton(text='3 секунды 🕒', callback_data='3s')
+    randomdelay = types.InlineKeyboardButton(text='Рандом. 🎒', callback_data='random_delay')
+    inputdelay = types.InlineKeyboardButton(text='Ввести 🧑‍⚖️ ', callback_data='input_delay')
+    back = types.InlineKeyboardButton(text='Отмена ⛔', callback_data='back')
+    keyboard.row(onesec, twosec, threesec)
+    keyboard.row(inputdelay, randomdelay)
+    keyboard.row(back)
+
+    await bot.edit_message_text(chat_id=query.message.chat.id,
+                                message_id=query.message.message_id, text=delay_msg,
+                                parse_mode="Markdown", reply_markup=keyboard, disable_web_page_preview=True)
 
 @dp.message_handler(state=UserInput.message)
 async def update_message(message: types.Message, state: FSMContext):

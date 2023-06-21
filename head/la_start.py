@@ -20,9 +20,15 @@ API_HASH = config.get('API', 'API_HASH')
 
 client = TelegramClient('anon', API_ID, API_HASH)
 
+async def get_delay():
+    with open("head/values/delay.txt", "r") as file:
+        delay = float(eval(file.read().strip()))  # Выполняем записанное выражение
+    return delay
+
 async def send_message(message, username):
     entity = await client.get_input_entity(username)
-    await asyncio.sleep(random.uniform(1.0, 1.35))
+    delay = await get_delay()
+    await asyncio.sleep(delay)
     try:
         await client.send_message(entity, message)
     except FloodWaitError as e:

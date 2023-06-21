@@ -1,0 +1,2 @@
+first_value==None
+second_value==None

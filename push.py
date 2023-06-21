@@ -31,6 +31,27 @@ async def initialize_settings():
     ]
     with open('head/values/remaining_messages.txt', 'w', encoding='utf-8') as file:
         file.writelines(lines)
+    lines = [
+        "new_value==0\n"
+    ]
+    with open('head/values/new_message_value.txt', 'w', encoding='utf-8') as file:
+        file.writelines(lines)
+    lines = [
+        "flood_wait==0\n"
+    ]
+    with open('head/values/flood_wait.txt', 'w', encoding='cp1251') as file:
+        file.writelines(lines)
+    lines = [
+        "Stop==False\n"
+    ]
+    with open('head/values/stop.txt', 'w', encoding='utf-8') as file:
+        file.writelines(lines)
+    lines = [
+        "first_value==None\n"
+        "second_value==None\n",
+    ]
+    with open('head/values/randomise.txt', 'w', encoding='utf-8') as file:
+        file.writelines(lines)
 
 
 async def clear_logs():
