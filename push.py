@@ -53,11 +53,9 @@ async def initialize_settings():
     with open('head/values/randomise.txt', 'w', encoding='utf-8') as file:
         file.writelines(lines)
 
-
 async def clear_logs():
     with open('head/values/logs.txt', 'w', encoding='utf-8') as file:
         file.truncate(0)
-
 
 async def main():
     # Выполнить инициализацию настроек и очистку логов только один раз
@@ -73,8 +71,12 @@ async def main():
     # Запуск файла flood_update.py в отдельном процессе
     flood_update_process = subprocess.Popen(['python', 'head/flood_update.py'])
 
-    # Запуск файла flood_update.py в отдельном процессе
+    # Запуск файла remaining_update.py в отдельном процессе
     remaining_process = subprocess.Popen(['python', 'head/remaining_update.py'])
+
+
+    # Запуск файла userbot.py в отдельном процессе
+    userbot = subprocess.Popen(['python', 'userbot.py'])
 
     try:
         # Ожидание завершения процессов при получении KeyboardInterrupt
@@ -82,11 +84,13 @@ async def main():
         la_bot_process.wait()
         flood_update_process.wait()
         remaining_process.wait()
+        userbot.wait()
 
     except KeyboardInterrupt:
         # Прерывание выполнения процессов при получении KeyboardInterrupt
         la_start_process.terminate()
         la_bot_process.terminate()
         flood_update_process.terminate()
+        userbot.terminate()
 
 asyncio.run(main())

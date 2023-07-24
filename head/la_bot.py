@@ -4,6 +4,7 @@ import time
 import random
 import logging
 import asyncio
+import aiogram
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
@@ -74,12 +75,27 @@ async def write_randomise(first_value, second_value):
     lines = []
     with open('head/values/randomise.txt', 'r', encoding='utf-8') as file:
         lines = file.readlines()
-
     lines[0] = f"first_value=={first_value}\n"
     lines[1] = f"second_value=={second_value}\n"
-
     with open('head/values/randomise.txt', 'w', encoding='utf-8') as file:
         file.writelines(lines)
+
+async def update_delay():
+    first_value, second_value = await read_randomise()
+
+    if first_value is None or second_value is None:
+        return
+
+    lower_bound = float(first_value)
+    upper_bound = float(second_value)
+
+    if lower_bound < upper_bound:
+        delay_expression = f"random.uniform({lower_bound}, {upper_bound})"
+    else:
+        delay_expression = f"random.uniform({upper_bound}, {lower_bound})"
+
+    with open('head/values/delay.txt', 'w', encoding='utf-8') as file:
+        file.write(delay_expression)
 
 async def read_residual_message():
     with open('head/values/residual_message.txt', 'r', encoding='utf-8') as file:
@@ -206,7 +222,10 @@ async def start_command(message: types.Message):
     change_category = types.InlineKeyboardButton(text='🌐 Изменение', callback_data='change_category')
     loop_category = types.InlineKeyboardButton(text='🔄 Цикл', callback_data='loop_category')
     statistics_category = types.InlineKeyboardButton(text='📊 Статистика', callback_data='statistics_category')
-    keyboard.add(change_category, loop_category, statistics_category)
+    automation_category = types.InlineKeyboardButton(text='🤖 Автоматизация', callback_data='automation_category')
+    keyboard.add(change_category, statistics_category)
+    keyboard.add(loop_category, automation_category)
+
     await message.reply("*🪄 Меню управления:*", parse_mode="Markdown", reply_markup=keyboard)
 
 @dp.message_handler(commands=['settings'])
@@ -215,13 +234,13 @@ async def start_command(message: types.Message):
     residual_message = await read_residual_message()
 
     # Настройки через команду
-    settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*⛺️ Таймер:* '
+    settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*🛑 Остановки:* '
     keyboard = types.InlineKeyboardMarkup()
     delay_messages = types.InlineKeyboardButton(text='Задержка 🚧', callback_data='delay_messages')
     residual_message = types.InlineKeyboardButton(text='Послед. 🏙️', callback_data='residual_message')
-    timer_time = types.InlineKeyboardButton(text='Таймер ⛺️ ', callback_data='timer_time')
+    lever_stop = types.InlineKeyboardButton(text='Остановки 🛑', callback_data='lever_stop')
     done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
-    keyboard.add(delay_messages, residual_message, timer_time)
+    keyboard.add(delay_messages, residual_message, lever_stop)
     keyboard.add(done)
     await message.reply(text=settings_text, parse_mode="Markdown", reply_markup=keyboard)
 
@@ -253,7 +272,9 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
         change_category = types.InlineKeyboardButton(text='🌐 Изменение', callback_data='change_category')
         loop_category = types.InlineKeyboardButton(text='🔄 Цикл', callback_data='loop_category')
         statistics_category = types.InlineKeyboardButton(text='📊 Статистика', callback_data='statistics_category')
-        keyboard.add(change_category, loop_category, statistics_category)
+        automation_category = types.InlineKeyboardButton(text='🤖 Автоматизация', callback_data='automation_category')
+        keyboard.add(change_category, statistics_category)
+        keyboard.add(loop_category, automation_category)
         await bot.send_message(callback_query.from_user.id, "*🪄 Меню управления:*", parse_mode="Markdown", reply_markup=keyboard)
 
     elif button_text == 'settings':
@@ -261,13 +282,13 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
         residual_message = await read_residual_message()
 
         # Создание и отправка сообщения с кнопками
-        settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*⛺️ Таймер:* '
+        settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*🛑 Остановки:* '
         keyboard = types.InlineKeyboardMarkup()
         delay_messages = types.InlineKeyboardButton(text='Задержка 🚧', callback_data='delay_messages')
         residual_message = types.InlineKeyboardButton(text='Послед. 🏙️', callback_data='residual_message')
-        timer_time = types.InlineKeyboardButton(text='Таймер ⛺️ ', callback_data='timer_time')
+        lever_stop = types.InlineKeyboardButton(text='Остановки 🛑', callback_data='lever_stop')
         done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
-        keyboard.add(delay_messages, residual_message, timer_time)
+        keyboard.add(delay_messages, residual_message, lever_stop)
         keyboard.add(done)
         await bot.send_message(callback_query.from_user.id, text=settings_text, parse_mode="Markdown", reply_markup=keyboard)
 
@@ -284,7 +305,6 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
         keyboard = types.InlineKeyboardMarkup()
         keyboard.add(types.InlineKeyboardButton(text='Остановить ⏸️', callback_data='stop'))
         keyboard.add(types.InlineKeyboardButton(text='Возобновить ▶️', callback_data='resume'))
-        keyboard.add(types.InlineKeyboardButton(text='Авто-отправка 💠', callback_data='autosend'))
         keyboard.add(types.InlineKeyboardButton(text='🔙 Назад', callback_data='back'))
         await bot.send_message(callback_query.from_user.id, "🔄 Категория *Цикл:*", parse_mode="Markdown", reply_markup=keyboard)
 
@@ -300,6 +320,14 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
         logs_button = types.InlineKeyboardButton(text='Логи 🔣', callback_data='logs')
         keyboard.add(refresh_button, logs_button)
         await bot.send_message(callback_query.from_user.id, statistics, parse_mode="Markdown", reply_markup=keyboard)
+
+    elif button_text == 'automation_category':
+        # Создание и отправка сообщения с кнопками категории "Цикл"
+        keyboard = types.InlineKeyboardMarkup()
+        keyboard.add(types.InlineKeyboardButton(text='Авто-отправка 💠', callback_data='autosend'))
+        keyboard.add(types.InlineKeyboardButton(text='Авто-фарм 🥩', callback_data='autofarm'))
+        keyboard.add(types.InlineKeyboardButton(text='🔙 Назад', callback_data='back'))
+        await bot.send_message(callback_query.from_user.id, "🤖 Категория *Автоматизация:*", parse_mode="Markdown", reply_markup=keyboard)
 
     elif button_text == 'change_message':
         await bot.answer_callback_query(callback_query.id, text="📩 Введите новое сообщение:")
@@ -363,6 +391,7 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
         # Обновление времени последнего нажатия для данного пользователя
 
         last_button_press[callback_query.from_user.id] = time.time()
+
     elif button_text == 'logs':
         await show_logs(callback_query, state)
 
@@ -664,13 +693,13 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
         residual_message = await read_residual_message()
 
         # Сообщение для изменения сообщения ввода
-        settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*⛺️ Таймер:* '
+        settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*🛑 Остановки:* '
         keyboard = types.InlineKeyboardMarkup()
         delay_messages = types.InlineKeyboardButton(text='Задержка 🚧', callback_data='delay_messages')
         residual_message = types.InlineKeyboardButton(text='Послед. 🏙️', callback_data='residual_message')
-        timer_time = types.InlineKeyboardButton(text='Таймер ⛺️ ', callback_data='timer_time')
+        lever_stop = types.InlineKeyboardButton(text='Остановки 🛑', callback_data='lever_stop')
         done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
-        keyboard.add(delay_messages, residual_message, timer_time)
+        keyboard.add(delay_messages, residual_message, lever_stop)
         keyboard.add(done)
         await bot.edit_message_text(chat_id=callback_query.from_user.id,
                                     message_id=callback_query.message.message_id, text=settings_text,
@@ -678,11 +707,43 @@ async def button_click(callback_query: types.CallbackQuery, state: FSMContext):
 
     elif button_text == 'randomise_confirm':
 
-        first_value, second_value = await read_randomise()
+        await update_delay()
+        delay = await read_delay()
+        residual_message = await read_residual_message()
+
+        first_value = None
+        second_value = None
+        await write_randomise(first_value, second_value)
+
+        # Создание и отправка второго сообщения с уведомлением об изменение значения
+        residual_message_text = f"*🚧 Задержка успешно установлена на:* {delay}"
+        keyboard_complete = types.InlineKeyboardMarkup()
+        done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
+        keyboard_complete.add(done)
+
+        # Сообщение для показа настроек
+        settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*🛑 Остановки:* '
+        keyboard = types.InlineKeyboardMarkup()
+        delay_messages = types.InlineKeyboardButton(text='Задержка 🚧', callback_data='delay_messages')
+        residual_message = types.InlineKeyboardButton(text='Послед. 🏙️', callback_data='residual_message')
+        lever_stop = types.InlineKeyboardButton(text='Остановки 🛑', callback_data='lever_stop')
+        done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
+        keyboard.add(delay_messages, residual_message, lever_stop)
+        keyboard.add(done)
 
         await bot.edit_message_text(chat_id=callback_query.from_user.id,
                                     message_id=callback_query.message.message_id, text=settings_text,
                                     parse_mode="Markdown", reply_markup=keyboard, disable_web_page_preview=True)
+        complete_message = await bot.send_message(chat_id=callback_query.from_user.id,
+                                                  text=residual_message_text,
+                                                  reply_markup=keyboard_complete,
+                                                  parse_mode="Markdown", disable_web_page_preview=True)
+        await asyncio.sleep(3)  # Задержка в 3 секунды
+        try:
+            await bot.delete_message(chat_id=complete_message.chat.id, message_id=complete_message.message_id)
+        except aiogram.utils.exceptions.MessageToDeleteNotFound:
+            pass
+
 
     elif button_text == 'done':
         await bot.answer_callback_query(callback_query.id, text="Задача была выполнена успешно! ✔ ️")
@@ -776,13 +837,13 @@ async def cancel_first_value(query: types.CallbackQuery, state: FSMContext):
     residual_message = await read_residual_message()
 
     # Сообщение для изменения сообщения ввода
-    settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*⛺️ Таймер:* '
+    settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*🛑 Остановки:* '
     keyboard = types.InlineKeyboardMarkup()
     delay_messages = types.InlineKeyboardButton(text='Задержка 🚧', callback_data='delay_messages')
     residual_message = types.InlineKeyboardButton(text='Послед. 🏙️', callback_data='residual_message')
-    timer_time = types.InlineKeyboardButton(text='Таймер ⛺️ ', callback_data='timer_time')
+    lever_stop = types.InlineKeyboardButton(text='Остановки 🛑', callback_data='lever_stop')
     done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
-    keyboard.add(delay_messages, residual_message, timer_time)
+    keyboard.add(delay_messages, residual_message, lever_stop)
     keyboard.add(done)
     await bot.edit_message_text(chat_id=query.message.chat.id, message_id=query.message.message_id, text=settings_text, parse_mode="Markdown", reply_markup=keyboard, disable_web_page_preview=True)
 
@@ -794,13 +855,13 @@ async def cancel_second_value(query: types.CallbackQuery, state: FSMContext):
     residual_message = await read_residual_message()
 
     # Сообщение для изменения сообщения ввода
-    settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*⛺️ Таймер:* '
+    settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*🛑 Остановки:* '
     keyboard = types.InlineKeyboardMarkup()
     delay_messages = types.InlineKeyboardButton(text='Задержка 🚧', callback_data='delay_messages')
     residual_message = types.InlineKeyboardButton(text='Послед. 🏙️', callback_data='residual_message')
-    timer_time = types.InlineKeyboardButton(text='Таймер ⛺️ ', callback_data='timer_time')
+    lever_stop = types.InlineKeyboardButton(text='Остановки 🛑', callback_data='lever_stop')
     done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
-    keyboard.add(delay_messages, residual_message, timer_time)
+    keyboard.add(delay_messages, residual_message, lever_stop)
     keyboard.add(done)
     await bot.edit_message_text(chat_id=query.message.chat.id, message_id=query.message.message_id, text=settings_text, parse_mode="Markdown", reply_markup=keyboard, disable_web_page_preview=True)
 
@@ -826,13 +887,13 @@ async def update_message(message: types.Message, state: FSMContext):
     keyboard_complete.add(done)
 
     # Сообщение для изменения сообщения ввода
-    settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*⛺️ Таймер:* '
+    settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*🛑 Остановки:* '
     keyboard = types.InlineKeyboardMarkup()
     delay_messages = types.InlineKeyboardButton(text='Задержка 🚧', callback_data='delay_messages')
     residual_message = types.InlineKeyboardButton(text='Послед. 🏙️', callback_data='residual_message')
-    timer_time = types.InlineKeyboardButton(text='Таймер ⛺️ ', callback_data='timer_time')
+    lever_stop = types.InlineKeyboardButton(text='Остановки 🛑', callback_data='lever_stop')
     done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
-    keyboard.add(delay_messages, residual_message, timer_time)
+    keyboard.add(delay_messages, residual_message, lever_stop)
     keyboard.add(done)
 
     await bot.edit_message_text(chat_id=message.chat.id, message_id=original_message_id,
@@ -857,13 +918,13 @@ async def cancel_delay_input(query: types.CallbackQuery, state: FSMContext):
     residual_message = await read_residual_message()
 
     # Настройки через команду
-    settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*⛺️ Таймер:* '
+    settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message}\n*🛑 Остановки:* '
     keyboard = types.InlineKeyboardMarkup()
     delay_messages = types.InlineKeyboardButton(text='Задержка 🚧', callback_data='delay_messages')
     residual_message = types.InlineKeyboardButton(text='Послед. 🏙️', callback_data='residual_message')
-    timer_time = types.InlineKeyboardButton(text='Таймер ⛺️ ', callback_data='timer_time')
+    lever_stop = types.InlineKeyboardButton(text='Остановки 🛑', callback_data='lever_stop')
     done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
-    keyboard.add(delay_messages, residual_message, timer_time)
+    keyboard.add(delay_messages, residual_message, lever_stop)
     keyboard.add(done)
 
     await bot.edit_message_text(chat_id=query.message.chat.id,
@@ -889,13 +950,13 @@ async def input_delay(message: types.Message, state: FSMContext):
         # Изменение сообщения с помощью original_message_id
         delay = await read_delay()
         residual_message_data = await read_residual_message()
-        settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message_data}\n*⛺️ Таймер:* '
+        settings_text = f'*Настройки ⚙️*\n\n*🚧 Текущая задержка:* {delay} \n*🏙️ Последовательное сообщение:* {residual_message_data}\n*🛑 Остановки:* '
         keyboard = types.InlineKeyboardMarkup()
         delay_messages = types.InlineKeyboardButton(text='Задержка 🚧', callback_data='delay_messages')
         residual_message = types.InlineKeyboardButton(text='Послед. 🏙️', callback_data='residual_message')
-        timer_time = types.InlineKeyboardButton(text='Таймер ⛺️ ', callback_data='timer_time')
+        lever_stop = types.InlineKeyboardButton(text='Остановки 🛑', callback_data='lever_stop')
         done = types.InlineKeyboardButton(text='Готово ✅', callback_data='done')
-        keyboard.add(delay_messages, residual_message, timer_time)
+        keyboard.add(delay_messages, residual_message, lever_stop)
         keyboard.add(done)
 
         await bot.edit_message_text(chat_id=message.chat.id, message_id=original_message_id,

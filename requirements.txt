@@ -4,3 +4,5 @@ asyncio==3.4.3
 aiohttp==3.8.4
 emoji==2.2.0
 pytz==2023.3
+configparser~=5.3.0
+Pyrogram~=2.0.106
