@@ -33,7 +33,7 @@ api_hash = "cc4d7960b1288548196c28045c79539d"
 
 app = Client("my_account", api_id=api_id, api_hash=api_hash)
 
-# Load the pre-trained language identification model
+# Load the pre-trained language identificatiоn model
 fasttext_model = fasttext.load_model("model/lid.176.bin")
 
 # Function to detect language using Fasttext
