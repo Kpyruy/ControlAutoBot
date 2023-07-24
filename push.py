@@ -87,7 +87,7 @@ async def main():
         userbot.wait()
 
     except KeyboardInterrupt:
-        # Прерывание выполнения процессов при получении KeyboardInterrupt
+        # Прерывание выполнения процессов при получении KeyboardInterrupt{}
         la_start_process.terminate()
         la_bot_process.terminate()
         flood_update_process.terminate()
