@@ -710,7 +710,7 @@ async def afk_handler(_, msg):
             answered_users.clear()
         else:
             afk_mode = True
-            afk_info["timestamp"] = datetime.datetime.now()
+            afk_info["timestamp"] = datetime.now()
             reason = command[5:].strip() if len(command) > 5 else None
             afk_info["reason"] = reason
 
