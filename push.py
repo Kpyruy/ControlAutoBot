@@ -79,7 +79,7 @@ async def main():
     userbot = subprocess.Popen(['python', 'userbot.py'])
 
     try:
-        # Ожидание завершения процессов при получении KeyboardInterrupt
+        # Ожидание завершения процессов при получении KeyboardInterrupt{}
         la_start_process.wait()
         la_bot_process.wait()
         flood_update_process.wait()
