@@ -1,7 +1,7 @@
 telethon==1.28.5
 aiogram==2.25.1
 asyncio==3.4.3
-aiohttp==3.8.4
+aiohttp==3.8.5
 emoji==2.2.0
 pytz==2023.3
 configparser~=5.3.0
