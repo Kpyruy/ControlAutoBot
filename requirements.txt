@@ -16,3 +16,4 @@ geopy~=2.3.0
 arrow~=1.2.3
 timezonefinderL~=4.0.2
 TgCrypto~=1.2.5
+importlib_resources~=5.2.2
