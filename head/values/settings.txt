@@ -1,3 +1,3 @@
-formatted_time==0 часов, 26 минут, 18 секунд
-stop_count==1
-sent_messages==867
+formatted_time==0 часов, 1 минута, 13 секунд
+stop_count==0
+sent_messages==81

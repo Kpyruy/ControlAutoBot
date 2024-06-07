@@ -22,19 +22,38 @@ client = TelegramClient('anon', API_ID, API_HASH)
 
 async def get_delay():
     with open("head/values/delay.txt", "r") as file:
-        delay = float(eval(file.read().strip()))  # Выполняем записанное выражение
+        delay = float(eval(file.read().strip()))
     return delay
 
+flood_wait_active = False
+
+async def forward_messages_in_background(entity):
+    try:
+        while flood_wait_active:
+            await client.forward_messages(entity, 27860950, 1738263685)
+
+            delay = await get_delay()
+            await asyncio.sleep(delay)
+    except Exception as e:
+        write_to_logs(f"Catch some problem - {e}")
+
+
 async def send_message(message, username):
+    global flood_wait_active
     entity = await client.get_input_entity(username)
     delay = await get_delay()
     await asyncio.sleep(delay)
     try:
         await client.send_message(entity, message)
+        flood_wait_active = False
     except FloodWaitError as e:
+        flood_wait_active = True
+        asyncio.create_task(forward_messages_in_background(entity))
+
         write_to_logs(f"Waiting for {e.seconds} seconds")
-        await update_flood_wait(e.seconds)  # Запись значения flood_wait в файл
+        await update_flood_wait(e.seconds)
         await asyncio.sleep(e.seconds)
+
     except Exception as ex:
         print(f"Error: {ex}")
 
@@ -109,13 +128,13 @@ with client:
 
         elapsed_time = time.time() - start_time
         if elapsed_time >= 750:
-            stop_count += 1
-            write_to_logs("Прошло 12,5 минут. Бот приостанавливает отправку сообщений на 2,5 минуты.")
-            write_to_logs(f"Остановка #{stop_count} в {time.strftime('%H:%M:%S', time.localtime())}")
-            time.sleep(150)
-            write_to_logs(f"Возобновление работы бота в {time.strftime('%H:%M:%S', time.localtime())}")
+            # stop_count += 1
+            # write_to_logs("Прошло 12,5 минут. Бот приостанавливает отправку сообщений на 2,5 минуты.")
+            # write_to_logs(f"Остановка #{stop_count} в {time.strftime('%H:%M:%S', time.localtime())}")
+            # time.sleep(150)
+            # write_to_logs(f"Возобновление работы бота в {time.strftime('%H:%M:%S', time.localtime())}")
             start_time = time.time()
-            resumed = False
+            # resumed = False
 
         total_elapsed_time = time.time() - starttime
         hours = int(total_elapsed_time // 3600)
