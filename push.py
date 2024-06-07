@@ -58,7 +58,6 @@ async def clear_logs():
         file.truncate(0)
 
 async def main():
-    # Выполнить инициализацию настроек и очистку логов только один раз
     await clear_logs()
     await initialize_settings()
 
@@ -66,7 +65,7 @@ async def main():
     la_start_process = subprocess.Popen(['python', 'head/la_start.py'])
 
     # Запуск файла la_bot.py в отдельном процессе
-    la_bot_process = subprocess.Popen(['python', 'head/la_bot.py'])
+    # la_bot_process = subprocess.Popen(['python', 'head/la_bot.py'])
 
     # Запуск файла flood_update.py в отдельном процессе
     flood_update_process = subprocess.Popen(['python', 'head/flood_update.py'])
@@ -77,14 +76,14 @@ async def main():
     try:
         # Ожидание завершения процессов при получении KeyboardInterrupt
         la_start_process.wait()
-        la_bot_process.wait()
+        # la_bot_process.wait()
         flood_update_process.wait()
         remaining_process.wait()
 
     except KeyboardInterrupt:
         # Прерывание выполнения процессов при получении KeyboardInterrupt{}
         la_start_process.terminate()
-        la_bot_process.terminate()
+        # la_bot_process.terminate()
         flood_update_process.terminate()
 
 asyncio.run(main())
